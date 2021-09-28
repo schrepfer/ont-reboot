@@ -76,6 +76,14 @@ def defineFlags():
       help='minimum number of seconds to reboot the relay',
     )
   parser.add_argument(
+      '--local-server-list',
+      type=str,
+      nargs='*',
+      default=['10.20.0.1', '10.20.0.50'],
+      metavar='HOSTNAME/IP',
+      help='server to ping to verify connection',
+    )
+  parser.add_argument(
       '--server-list',
       type=str,
       nargs='+',
@@ -95,15 +103,15 @@ def checkFlags(parser, args):
 
 
 def checkConnection(server):
-  logging.info("Checking server: %s", server)
+  logging.debug("Checking server: %s", server)
   cmd = ['ping', '-c1', server]
   ret = subprocess.call(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
   if ret == 0:
-    logging.info("Connection OK")
+    logging.info("Connection to %r OK", server)
     return True
 
-  logging.warning("Connection FAILED")
+  logging.warning("Connection to %r FAILED", server)
   return False
 
 
@@ -119,24 +127,32 @@ def main(args):
 
   try:
     while True:
-      current_state = checkConnections(args.server_list)
+      remote_state = checkConnections(args.server_list)
+      logging.debug("remote_state = %s", remote_state)
 
-      logging.debug("current_state = %s", current_state)
+      # State is considered OK if remote connection works, or the local network is down.
+      state = remote_state
+      if not state and args.local_server_list:
+        local_state = checkConnections(args.local_server_list)
+        logging.debug("local_state = %s", local_state)
+        state = not local_state
 
-      if current_state is previous_state:
+      logging.debug("state = %s", state)
+
+      if state is previous_state:
         state_count += 1
       else:
         state_count = 0
 
       logging.debug("state_count = %d", state_count)
 
-      if current_state:
+      if state:
         last_connection = time.time()
 
       else:
-        if state_count and state_count > 1 and (
+        if state_count > 2 and (
             time.time() - last_reboot >= args.min_reboot_frequency_seconds):
-          logging.info("Rebooting the relay device.")
+          logging.info("Rebooting the relay (pin %d) device.", args.relay_pin)
           GPIO.output(RELAY, GPIO.LOW)
           time.sleep(args.power_seconds)
           GPIO.output(RELAY, GPIO.HIGH)
@@ -145,7 +161,7 @@ def main(args):
       logging.debug("last_connection = %s", last_connection)
       logging.debug("last_reboot = %s", last_reboot)
 
-      previous_state = current_state
+      previous_state = state
 
       logging.info("Sleeping for %0.2fs", args.sleep_seconds)
 
