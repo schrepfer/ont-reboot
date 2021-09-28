@@ -10,9 +10,10 @@ DIR=$(realpath $(dirname $0))
 SERVICE='ont-reboot.service'
 SYSTEM='/lib/systemd/system'
 SCRIPT='ont-reboot.py'
+SERVICE_FILE=$SYSTEM/$SERVICE
 
-rm -f $SYSTEM/$SERVICE
-cat > $SYSTEM/$SERVICE << EOF
+rm -f $SERVICE_FILE
+cat > $SERVICE_FILE << EOF
 [Unit]
 Description=ONT Reboot Service
 ConditionPathExists=$DIR/$SCRIPT

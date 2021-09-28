@@ -1,16 +1,6 @@
 #!/usr/bin/python3
 
-### BEGIN INIT INFO
-# Provides:          relay.py
-# Required-Start:    $remote_fs $syslog
-# Required-Stop:     $remote_fs $syslog
-# Default-Start:     2 3 4 5
-# Default-Stop:      0 1 6
-# Short-Description: Raspberry PI program.
-# Description:
-### END INIT INFO
-
-"""Uses relay to reboot network device based on poor connection."""
+"""Uses relay to reboot network device based on non-working connection."""
 
 
 from RPi import GPIO
