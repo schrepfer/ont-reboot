@@ -14,11 +14,9 @@ import subprocess
 import sys
 import time
 
-RELAY = 4
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(RELAY, GPIO.OUT, initial=GPIO.HIGH)
 
 
 def defineFlags():
@@ -42,7 +40,7 @@ def defineFlags():
       type=int,
       default=4,
       metavar='PIN',
-      help='the relays gpio pin',
+      help='the relays gpio pin (BCM)',
     )
   parser.add_argument(
       '-s', '--sleep-seconds',
@@ -110,6 +108,8 @@ def checkConnections(server_list):
 
 
 def main(args):
+  GPIO.setup(args.relay_pin, GPIO.OUT, initial=GPIO.HIGH)
+
   last_reboot = 0
   last_connection = 0
   state_count = 0
@@ -143,9 +143,9 @@ def main(args):
         if state_count > 2 and (
             time.time() - last_reboot >= args.min_reboot_frequency_seconds):
           logging.info("Rebooting the relay (pin %d) device.", args.relay_pin)
-          GPIO.output(RELAY, GPIO.LOW)
+          GPIO.output(args.relay_pin, GPIO.LOW)
           time.sleep(args.power_seconds)
-          GPIO.output(RELAY, GPIO.HIGH)
+          GPIO.output(args.relay_pin, GPIO.HIGH)
           last_reboot = time.time()
 
       logging.debug("last_connection = %s", last_connection)
