@@ -123,8 +123,10 @@ def main(args):
       # State is considered OK if remote connection works, or the local network is down.
       state = remote_state
       if not state and args.local_server_list:
+        logging.info('All remote connections failed. Checking local..')
         local_state = checkConnections(args.local_server_list)
         logging.debug("local_state = %s", local_state)
+        logging.info('Local connections %s', 'OK' if local_state else 'FAILED')
         state = not local_state
 
       logging.debug("state = %s", state)
