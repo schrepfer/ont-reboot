@@ -37,7 +37,7 @@ def defineFlags():
       type=int,
       default=4,
       metavar='PIN',
-      help='the relays gpio pin (see --pin-mode)',
+      help='the relays gpio pin (see --pin-mode to set mode)',
     )
   parser.add_argument(
       '--gpio-warnings',
@@ -126,11 +126,10 @@ def checkConnections(server_list):
 
 
 def main(args):
-  GPIO.setwarnings(args.gpio_warnings)
-  GPIO.setmode(getattr(GPIO, args.pin_mode))
-
   logging.info('Args:\n%s', pprint.pformat(dict(args.__dict__.items()), indent=1))
 
+  GPIO.setwarnings(args.gpio_warnings)
+  GPIO.setmode(getattr(GPIO, args.pin_mode))
   GPIO.setup(args.relay_pin, GPIO.OUT, initial=GPIO.HIGH)
 
   last_reboot = 0
