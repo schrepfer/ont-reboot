@@ -9,14 +9,11 @@ import argparse
 import enum
 import logging
 import os
+import pprint
 import random
 import subprocess
 import sys
 import time
-
-
-GPIO.setwarnings(False)
-GPIO.setmode(GPIO.BCM)
 
 
 def defineFlags():
@@ -40,7 +37,28 @@ def defineFlags():
       type=int,
       default=4,
       metavar='PIN',
-      help='the relays gpio pin (BCM)',
+      help='the relays gpio pin (see --pin-mode)',
+    )
+  parser.add_argument(
+      '--gpio-warnings',
+      default=False,
+      action='store_true',
+      help='should GPIO warnings be displayed',
+    )
+  parser.add_argument(
+      '-m', '--pin-mode',
+      type=str,
+      default='BCM',
+      metavar='MODE',
+      choices=['BCM', 'BOARD'],
+      help='the pin-mode to use when selecting pins',
+    )
+  parser.add_argument(
+      '--consecutive-failures',
+      type=int,
+      default=2,
+      metavar='FAILURES',
+      help='number of failures to allow before rebooting relay',
     )
   parser.add_argument(
       '-s', '--sleep-seconds',
@@ -91,15 +109,15 @@ def checkFlags(parser, args):
 
 
 def checkConnection(server):
-  logging.debug("Checking server: %s", server)
+  logging.debug('Checking server: %s', server)
   cmd = ['ping', '-c1', server]
   ret = subprocess.call(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
   if ret == 0:
-    logging.info("Connection to %r OK", server)
+    logging.debug('Connection to %r OK', server)
     return True
 
-  logging.warning("Connection to %r FAILED", server)
+  logging.warning('Connection to %r FAILED', server)
   return False
 
 
@@ -108,6 +126,11 @@ def checkConnections(server_list):
 
 
 def main(args):
+  GPIO.setwarnings(args.gpio_warnings)
+  GPIO.setmode(getattr(GPIO, args.pin_mode))
+
+  logging.info('Args:\n%s', pprint.pformat(dict(args.__dict__.items()), indent=1))
+
   GPIO.setup(args.relay_pin, GPIO.OUT, initial=GPIO.HIGH)
 
   last_reboot = 0
@@ -118,44 +141,44 @@ def main(args):
   try:
     while True:
       remote_state = checkConnections(args.server_list)
-      logging.debug("remote_state = %s", remote_state)
+      logging.debug('remote_state = %s', remote_state)
 
       # State is considered OK if remote connection works, or the local network is down.
       state = remote_state
       if not state and args.local_server_list:
         logging.info('All remote connections failed. Checking local..')
         local_state = checkConnections(args.local_server_list)
-        logging.debug("local_state = %s", local_state)
+        logging.debug('local_state = %s', local_state)
         logging.info('Local connections %s', 'OK' if local_state else 'FAILED')
         state = not local_state
 
-      logging.debug("state = %s", state)
+      logging.debug('state = %s', state)
 
       if state is previous_state:
         state_count += 1
       else:
         state_count = 0
 
-      logging.debug("state_count = %d", state_count)
+      logging.debug('state_count = %d', state_count)
 
       if state:
         last_connection = time.time()
 
       else:
-        if state_count > 2 and (
+        if state_count > args.consecutive_failures and (
             time.time() - last_reboot >= args.min_reboot_frequency_seconds):
-          logging.info("Rebooting the relay (pin %d) device.", args.relay_pin)
+          logging.info('Rebooting the relay (pin %d) device.', args.relay_pin)
           GPIO.output(args.relay_pin, GPIO.LOW)
           time.sleep(args.power_seconds)
           GPIO.output(args.relay_pin, GPIO.HIGH)
           last_reboot = time.time()
 
-      logging.debug("last_connection = %s", last_connection)
-      logging.debug("last_reboot = %s", last_reboot)
+      logging.debug('last_connection = %s', last_connection)
+      logging.debug('last_reboot = %s', last_reboot)
 
       previous_state = state
 
-      logging.info("Sleeping for %0.2fs", args.sleep_seconds)
+      logging.debug('Sleeping for %0.2fs', args.sleep_seconds)
 
       time.sleep(args.sleep_seconds)
 
@@ -170,5 +193,5 @@ if __name__ == '__main__':
   logging.basicConfig(
       level=a.verbosity,
       datefmt='%Y/%m/%d %H:%M:%S',
-      format='%(levelname)s: %(message)s')
+      format='%(filename)s: %(levelname)s: %(message)s')
   sys.exit(main(a))
