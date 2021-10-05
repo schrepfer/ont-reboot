@@ -35,6 +35,13 @@ def defineFlags():
       version='relay version 0.1',
   )
   parser.add_argument(
+      '--log-frequency',
+      type=int,
+      default=100,
+      metavar='LOOPS',
+      help='how often to log connection stats, 0 for never',
+    )
+  parser.add_argument(
       '-p', '--relay-pin',
       type=int,
       default=4,
@@ -56,7 +63,7 @@ def defineFlags():
       help='the pin-mode to use when selecting pins',
     )
   parser.add_argument(
-      '--consecutive-failures',
+      '--allowable-consecutive-failures',
       type=int,
       default=2,
       metavar='FAILURES',
@@ -135,12 +142,12 @@ def main(args):
   GPIO.setup(args.relay_pin, GPIO.OUT, initial=GPIO.HIGH)
 
   start_time = datetime.datetime.now()
-  last_reboot = 0
-  last_connection = 0
+  last_reboot = None
+  last_connection = None
   state_count = 0
   previous_state = None
   state_counts = collections.defaultdict(int)
-  loops = 0
+  i = 0
 
   try:
     while True:
@@ -173,7 +180,7 @@ def main(args):
 
       else:
         seconds_since_last_reboot = (now - last_reboot).total_seconds()
-        if state_count > args.consecutive_failures and (
+        if state_count > args.allowable_consecutive_failures and (
             seconds_since_last_reboot >= args.min_reboot_frequency_seconds):
           logging.info('Rebooting the relay (pin %d) device.', args.relay_pin)
           GPIO.output(args.relay_pin, GPIO.LOW)
@@ -186,18 +193,18 @@ def main(args):
 
       previous_state = state
 
-      if not loops % 100:
+      i += 1
+
+      if args.log_frequency and not i % args.log_frequency:
         logging.info(
             'loop %s: errors: %d, ok: %d (ratio %0.3f), '
             'last connection: %s, last reboot: %s, '
             'runtime: %s',
-            loops, state_counts[False], state_counts[True],
+            i, state_counts[False], state_counts[True],
             state_counts[True] / (state_counts[False] + state_counts[True]),
             last_connection, last_reboot,
             now - start_time,
         )
-
-      loops += 1
 
       logging.debug('Sleeping for %0.2fs', args.sleep_seconds)
       time.sleep(args.sleep_seconds)
