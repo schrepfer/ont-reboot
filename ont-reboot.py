@@ -134,6 +134,13 @@ def checkConnections(server_list):
   return any(checkConnection(server) for server in server_list)
 
 
+class State(enum.Enum):
+  UNKNOWN = 0
+  REMOTE_DOWN = 1
+  LOCAL_DOWN = 2
+  UP = 3
+
+
 def main(args):
   logging.info('Args:\n%s', pprint.pformat(dict(args.__dict__.items()), indent=1))
 
@@ -152,17 +159,13 @@ def main(args):
   try:
     while True:
       now = datetime.datetime.now()
-      remote_state = checkConnections(args.server_list)
-      logging.debug('remote_state = %s', remote_state)
+      state = State.UP if checkConnections(args.server_list) else State.REMOTE_DOWN
 
       # State is considered OK if remote connection works, or the local network is down.
-      state = remote_state
-      if not state and args.local_server_list:
+      if state == State.REMOTE_DOWN and args.local_server_list:
         logging.info('All remote connections failed. Checking local..')
-        local_state = checkConnections(args.local_server_list)
-        logging.debug('local_state = %s', local_state)
-        logging.info('Local connections %s', 'OK' if local_state else 'FAILED')
-        state = not local_state
+        if not checkConnections(args.local_server_list):
+          state = State.LOCAL_DOWN
 
       logging.debug('state = %s', state)
 
@@ -171,9 +174,11 @@ def main(args):
       else:
         state_count = 0
 
+      logging.debug('state_count = %d', state_count)
+
       state_counts[state] += 1
 
-      logging.debug('state_count = %d', state_count)
+      logging.debug('state_counts = %s', {str(k): v for k, v in state_counts.items()})
 
       if state:
         last_connection = now
@@ -197,11 +202,10 @@ def main(args):
 
       if args.log_frequency and not i % args.log_frequency:
         logging.info(
-            'loop %s: errors: %d, ok: %d (ratio %0.3f), '
+            'loop %s: state: %s, '
             'last connection: %s, last reboot: %s, '
             'runtime: %s',
-            i, state_counts[False], state_counts[True],
-            state_counts[True] / (state_counts[False] + state_counts[True]),
+            i, {str(k): v for k, v in state_counts.items()},
             last_connection, last_reboot,
             now - start_time,
         )
