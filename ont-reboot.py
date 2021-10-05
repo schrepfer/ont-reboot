@@ -6,6 +6,8 @@
 from RPi import GPIO
 
 import argparse
+import collections
+import datetime
 import enum
 import logging
 import os
@@ -132,13 +134,17 @@ def main(args):
   GPIO.setmode(getattr(GPIO, args.pin_mode))
   GPIO.setup(args.relay_pin, GPIO.OUT, initial=GPIO.HIGH)
 
+  start_time = datetime.datetime.now()
   last_reboot = 0
   last_connection = 0
   state_count = 0
   previous_state = None
+  state_counts = collections.defaultdict(int)
+  loops = 0
 
   try:
     while True:
+      now = datetime.datetime.now()
       remote_state = checkConnections(args.server_list)
       logging.debug('remote_state = %s', remote_state)
 
@@ -158,27 +164,42 @@ def main(args):
       else:
         state_count = 0
 
+      state_counts[state] += 1
+
       logging.debug('state_count = %d', state_count)
 
       if state:
-        last_connection = time.time()
+        last_connection = now
 
       else:
+        seconds_since_last_reboot = (now - last_reboot).total_seconds()
         if state_count > args.consecutive_failures and (
-            time.time() - last_reboot >= args.min_reboot_frequency_seconds):
+            seconds_since_last_reboot >= args.min_reboot_frequency_seconds):
           logging.info('Rebooting the relay (pin %d) device.', args.relay_pin)
           GPIO.output(args.relay_pin, GPIO.LOW)
           time.sleep(args.power_seconds)
           GPIO.output(args.relay_pin, GPIO.HIGH)
-          last_reboot = time.time()
+          last_reboot = now
 
       logging.debug('last_connection = %s', last_connection)
       logging.debug('last_reboot = %s', last_reboot)
 
       previous_state = state
 
-      logging.debug('Sleeping for %0.2fs', args.sleep_seconds)
+      if not loops % 100:
+        logging.info(
+            'loop %s: errors: %d, ok: %d (ratio %0.3f), '
+            'last connection: %s, last reboot: %s, '
+            'runtime: %s',
+            loops, state_counts[False], state_counts[True],
+            state_counts[True] / (state_counts[False] + state_counts[True]),
+            last_connection, last_reboot,
+            now - start_time,
+        )
 
+      loops += 1
+
+      logging.debug('Sleeping for %0.2fs', args.sleep_seconds)
       time.sleep(args.sleep_seconds)
 
   finally:
