@@ -159,7 +159,11 @@ def main(args):
   try:
     while True:
       now = datetime.datetime.now()
-      state = State.UP if checkConnections(args.server_list) else State.REMOTE_DOWN
+
+      if checkConnections(args.server_list):
+        state = State.UP
+      else:
+        State.REMOTE_DOWN
 
       # State is considered OK if remote connection works, or the local network is down.
       if state == State.REMOTE_DOWN and args.local_server_list:
