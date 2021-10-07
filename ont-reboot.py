@@ -96,7 +96,7 @@ def defineFlags():
       nargs='*',
       default=['10.20.0.1', '10.20.0.50'],
       metavar='HOSTNAME/IP',
-      help='server to ping to verify connection',
+      help='server to ping to verify local connections',
     )
   parser.add_argument(
       '--server-list',
@@ -104,7 +104,7 @@ def defineFlags():
       nargs='+',
       default=['www.google.com', '4.2.2.1'],
       metavar='HOSTNAME/IP',
-      help='server to ping to verify connection',
+      help='server to ping to verify remote connections',
     )
 
   args = parser.parse_args()

@@ -36,7 +36,7 @@ optional arguments:
   --min-reboot-frequency-seconds SECONDS
                         minimum number of seconds to reboot the relay
   --local-server-list [HOSTNAME/IP [HOSTNAME/IP ...]]
-                        server to ping to verify connection
+                        server to ping to verify local connections
   --server-list HOSTNAME/IP [HOSTNAME/IP ...]
-                        server to ping to verify connection
+                        server to ping to verify remote connections
 ```
