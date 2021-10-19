@@ -13,6 +13,7 @@ import logging
 import os
 import pprint
 import random
+import signal
 import subprocess
 import sys
 import time
@@ -117,10 +118,33 @@ def checkFlags(parser, args):
   return
 
 
+connections = collections.defaultdict(lambda: collections.defaultdict(int))
+start_time = datetime.datetime.now()
+last_reboot = None
+last_connection = None
+state_counts = collections.defaultdict(int)
+
+
+def logInfo(*unused, i=None, now=None):
+  if now is None:
+    now = datetime.datetime.now()
+  global connections, start_time, last_reboot, last_connection, state_counts
+  logging.info(
+      'loop %s:\n%s', 'n/a' if i is None else i,
+      pprint.pformat({
+        'state counts': {str(k): v for k, v in state_counts.items()},
+        'last connection': str(last_connection),
+        'last reboot': str(last_reboot),
+        'runtime': str(now - start_time),
+        'connections': {k: {kk: vv for kk, vv in v.items()} for k, v in connections.items()},
+      }, indent=1))
+
+
 def checkConnection(server):
   logging.debug('Checking server: %s', server)
   cmd = ['ping', '-c1', server]
   ret = subprocess.call(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  connections[server][ret] += 1
 
   if ret == 0:
     logging.debug('Connection to %r OK', server)
@@ -148,12 +172,12 @@ def main(args):
   GPIO.setmode(getattr(GPIO, args.pin_mode))
   GPIO.setup(args.relay_pin, GPIO.OUT, initial=GPIO.HIGH)
 
-  start_time = datetime.datetime.now()
-  last_reboot = None
-  last_connection = None
+  signal.signal(signal.SIGUSR1, logInfo)
+
+  global last_reboot, last_connection, state_counts
+
   state_count = 0
   previous_state = None
-  state_counts = collections.defaultdict(int)
   i = 0
 
   try:
@@ -205,14 +229,7 @@ def main(args):
       i += 1
 
       if args.log_frequency and not i % args.log_frequency:
-        logging.info(
-            'loop %s: state: %s, '
-            'last connection: %s, last reboot: %s, '
-            'runtime: %s',
-            i, {str(k): v for k, v in state_counts.items()},
-            last_connection, last_reboot,
-            now - start_time,
-        )
+        logInfo(i=i, now=now)
 
       logging.debug('Sleeping for %0.2fs', args.sleep_seconds)
       time.sleep(args.sleep_seconds)
