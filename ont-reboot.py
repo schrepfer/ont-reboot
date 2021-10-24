@@ -123,14 +123,15 @@ start_time = datetime.datetime.now()
 last_reboot = None
 last_connection = None
 state_counts = collections.defaultdict(int)
+loop = 0
 
 
-def logInfo(*unused, i=None, now=None):
+def logInfo(*unused, now=None):
   if now is None:
     now = datetime.datetime.now()
   global connections, start_time, last_reboot, last_connection, state_counts
   logging.info(
-      'loop %s:\n%s', 'n/a' if i is None else i,
+      'loop %s:\n%s', loop,
       pprint.pformat({
         'state counts': {str(k): v for k, v in state_counts.items()},
         'last connection': str(last_connection),
@@ -174,11 +175,10 @@ def main(args):
 
   signal.signal(signal.SIGUSR1, logInfo)
 
-  global last_reboot, last_connection, state_counts
+  global last_reboot, last_connection, state_counts, loop
 
   state_count = 0
   previous_state = None
-  i = 0
 
   try:
     while True:
@@ -187,11 +187,10 @@ def main(args):
       if checkConnections(args.server_list):
         state = State.UP
       else:
-        State.REMOTE_DOWN
+        state = State.REMOTE_DOWN
 
       # State is considered OK if remote connection works, or the local network is down.
       if state == State.REMOTE_DOWN and args.local_server_list:
-        logging.info('All remote connections failed. Checking local..')
         if not checkConnections(args.local_server_list):
           state = State.LOCAL_DOWN
 
@@ -208,13 +207,14 @@ def main(args):
 
       logging.debug('state_counts = %s', {str(k): v for k, v in state_counts.items()})
 
-      if state:
+      if state == state.UP:
         last_connection = now
 
-      else:
-        seconds_since_last_reboot = (now - last_reboot).total_seconds()
+      elif state == state.REMOTE_DOWN:
+        logging.warning('All remote connections down.')
         if state_count > args.allowable_consecutive_failures and (
-            seconds_since_last_reboot >= args.min_reboot_frequency_seconds):
+            not last_reboot or
+            (now - last_reboot).total_seconds() >= args.min_reboot_frequency_seconds):
           logging.info('Rebooting the relay (pin %d) device.', args.relay_pin)
           GPIO.output(args.relay_pin, GPIO.LOW)
           time.sleep(args.power_seconds)
@@ -226,10 +226,10 @@ def main(args):
 
       previous_state = state
 
-      i += 1
+      loop += 1
 
-      if args.log_frequency and not i % args.log_frequency:
-        logInfo(i=i, now=now)
+      if args.log_frequency and not loop % args.log_frequency:
+        logInfo(now=now)
 
       logging.debug('Sleeping for %0.2fs', args.sleep_seconds)
       time.sleep(args.sleep_seconds)
