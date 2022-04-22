@@ -80,7 +80,7 @@ def defineFlags():
   parser.add_argument(
       '--power-seconds',
       type=float,
-      default=5.0,
+      default=60.0,
       metavar='SECONDS',
       help='number of seconds to keep relay off for',
     )
@@ -120,7 +120,7 @@ def checkFlags(parser, args):
 
 connections = collections.defaultdict(lambda: collections.defaultdict(int))
 start_time = datetime.datetime.now()
-last_reboot = None
+last_reboots = []
 last_connection = None
 state_counts = collections.defaultdict(int)
 loop = 0
@@ -129,15 +129,15 @@ loop = 0
 def logInfo(*unused, now=None):
   if now is None:
     now = datetime.datetime.now()
-  global connections, start_time, last_reboot, last_connection, state_counts
+  global connections, start_time, last_reboots, last_connection, state_counts
   logging.info(
       'loop %s:\n%s', loop,
       pprint.pformat({
         'state counts': {str(k): v for k, v in state_counts.items()},
         'last connection': str(last_connection),
-        'last reboot': str(last_reboot),
+        'last reboots': [str(x) for x in last_reboots],
         'runtime': str(now - start_time),
-        'connections': {k: {kk: vv for kk, vv in v.items()} for k, v in connections.items()},
+        'connections': {k: {'exit({0})'.format(kk): vv for kk, vv in v.items()} for k, v in connections.items()},
       }, indent=1))
 
 
@@ -175,10 +175,12 @@ def main(args):
 
   signal.signal(signal.SIGUSR1, logInfo)
 
-  global last_reboot, last_connection, state_counts, loop
+  global last_reboots, last_connection, state_counts, loop
 
   state_count = 0
   previous_state = None
+  last_reboot = None
+  rebooted = False
 
   try:
     while True:
@@ -209,6 +211,10 @@ def main(args):
 
       if state == state.UP:
         last_connection = now
+        if rebooted:
+          logging.info('Connection restored.')
+          rebooted = False
+
 
       elif state == state.REMOTE_DOWN:
         logging.warning('All remote connections down.')
@@ -220,6 +226,8 @@ def main(args):
           time.sleep(args.power_seconds)
           GPIO.output(args.relay_pin, GPIO.HIGH)
           last_reboot = now
+          last_reboots.append(last_reboot)
+          rebooted = True
 
       logging.debug('last_connection = %s', last_connection)
       logging.debug('last_reboot = %s', last_reboot)
