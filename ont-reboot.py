@@ -135,7 +135,8 @@ def logInfo(*unused, now=None):
       pprint.pformat({
         'state counts': {str(k): v for k, v in state_counts.items()},
         'last connection': str(last_connection),
-        'last reboots': [str(x) for x in last_reboots],
+        'reboots': [str(x) for x in last_reboots],
+        'reboots count': len(last_reboots),
         'runtime': str(now - start_time),
         'connections': {k: {'exit({0})'.format(kk): vv for kk, vv in v.items()} for k, v in connections.items()},
       }, indent=1))
