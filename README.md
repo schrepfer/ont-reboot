@@ -5,38 +5,34 @@ Uses relay to reboot network device based on non-working connection.
 ## Usage
 
 ```
-usage: ont-reboot.py [-h] [-v LEVEL] [-V] [--log-frequency LOOPS] [-p PIN]
-                     [--gpio-warnings] [-m MODE]
-                     [--allowable-consecutive-failures FAILURES] [-s SECONDS]
-                     [--power-seconds SECONDS]
-                     [--min-reboot-frequency-seconds SECONDS]
-                     [--local-server-list [HOSTNAME/IP [HOSTNAME/IP ...]]]
-                     [--server-list HOSTNAME/IP [HOSTNAME/IP ...]]
+usage: ont-reboot.py [-h] [-v VERBOSITY] [--log-frequency LOG_FREQUENCY] [-p RELAY_PIN]
+                     [--allowable-consecutive-failures ALLOWABLE_CONSECUTIVE_FAILURES]
+                     [-s SLEEP_SECONDS]
+                     [--power-seconds POWER_SECONDS]
+                     [--min-reboot-frequency-seconds MIN_REBOOT_FREQUENCY_SECONDS]
+                     [--local-server-list [LOCAL_SERVER_LIST ...]]
+                     [--server-list SERVER_LIST [SERVER_LIST ...]]
 
 Uses relay to reboot network device based on non-working connection.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
-  -v LEVEL, --verbosity LEVEL
-                        the logging verbosity
-  -V, --version         show program's version number and exit
-  --log-frequency LOOPS
-                        how often to log connection stats, 0 for never
-  -p PIN, --relay-pin PIN
-                        the relays gpio pin (see --pin-mode to set mode)
-  --gpio-warnings       should GPIO warnings be displayed
-  -m MODE, --pin-mode MODE
-                        the pin-mode to use when selecting pins
-  --allowable-consecutive-failures FAILURES
-                        number of failures to allow before rebooting relay
-  -s SECONDS, --sleep-seconds SECONDS
-                        number of seconds to sleep between ping checks
-  --power-seconds SECONDS
-                        number of seconds to keep relay off for
-  --min-reboot-frequency-seconds SECONDS
-                        minimum number of seconds to reboot the relay
-  --local-server-list [HOSTNAME/IP [HOSTNAME/IP ...]]
-                        server to ping to verify local connections
-  --server-list HOSTNAME/IP [HOSTNAME/IP ...]
-                        server to ping to verify remote connections
+  -v VERBOSITY, --verbosity VERBOSITY
+                        Logging verbosity (e.g., 10 for DEBUG, 20 for INFO)
+  --log-frequency LOG_FREQUENCY
+                        How often to log connection stats, 0 for never
+  -p RELAY_PIN, --relay-pin RELAY_PIN
+                        The relay GPIO pin (BCM numbering)
+  --allowable-consecutive-failures ALLOWABLE_CONSECUTIVE_FAILURES
+                        Number of failures allowed before rebooting
+  -s SLEEP_SECONDS, --sleep-seconds SLEEP_SECONDS
+                        Seconds to sleep between ping checks
+  --power-seconds POWER_SECONDS
+                        Seconds to keep relay off during reboot
+  --min-reboot-frequency-seconds MIN_REBOOT_FREQUENCY_SECONDS
+                        Minimum time between consecutive reboots
+  --local-server-list [LOCAL_SERVER_LIST ...]
+                        Servers to verify local network health
+  --server-list SERVER_LIST [SERVER_LIST ...]
+                        Servers to verify remote internet health
 ```
