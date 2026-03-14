@@ -227,7 +227,7 @@ class RelayController:
 
 def main(args: argparse.Namespace) -> int:
   try:
-    relay = OutputDevice(args.relay_pin, active_high=False, initial_value=True)
+    relay = OutputDevice(args.relay_pin, active_high=False, initial_value=False)
   except lgpio.error as e:
     logging.error(f'Error: {e}')
     return os.EX_UNAVAILABLE
