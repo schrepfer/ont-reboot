@@ -203,10 +203,10 @@ class RelayController:
           if state_count >= self.args.allowable_consecutive_failures and can_reboot:
             logging.info('Triggering reboot on pin %d', self.args.relay_pin)
 
-            # gpiozero: .off() cuts the circuit, .on() restores it
-            self.relay.off() 
-            time.sleep(self.args.power_seconds)
+            # gpiozero: .on() cuts the circuit, .off() restores it (wires connected to NC)
             self.relay.on()
+            time.sleep(self.args.power_seconds)
+            self.relay.off()
             last_reboot_time = now
             self.last_reboots.append(last_reboot_time)
             reboot_in_progress = True
